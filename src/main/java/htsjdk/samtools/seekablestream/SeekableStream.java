@@ -146,7 +146,7 @@ public abstract class SeekableStream extends InputStream {
 
     /** Mark is always supported by any {@link SeekableStream}. */
     @Override
-    public final boolean markSupported() {
+    public boolean markSupported() {
         return true;
     }
 
