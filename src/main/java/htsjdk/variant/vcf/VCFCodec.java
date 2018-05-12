@@ -93,7 +93,7 @@ public class VCFCodec extends AbstractVCFCodec {
                 final String[] lineFields = line.substring(2).split("=");
                 if (lineFields.length == 2 && VCFHeaderVersion.isFormatString(lineFields[0]) ) {
                     if ( !VCFHeaderVersion.isVersionString(lineFields[1]) )
-                        throw new TribbleException.InvalidHeader(lineFields[1] + " is not a supported version");
+                        // throw new TribbleException.InvalidHeader(lineFields[1] + " is not a supported version");
                     foundHeaderVersion = true;
                     version = VCFHeaderVersion.toHeaderVersion(lineFields[1]);
                     if ( ! version.isAtLeastAsRecentAs(VCFHeaderVersion.VCF4_0) )
@@ -105,18 +105,18 @@ public class VCFCodec extends AbstractVCFCodec {
             }
             else if (line.startsWith(VCFHeader.HEADER_INDICATOR)) {
                 if (!foundHeaderVersion) {
-                    throw new TribbleException.InvalidHeader("We never saw a header line specifying VCF version");
+                    // throw new TribbleException.InvalidHeader("We never saw a header line specifying VCF version");
                 }
                 headerStrings.add(lineIterator.next());
                 super.parseHeaderFromLines(headerStrings, version);
                 return this.header;
             }
             else {
-                throw new TribbleException.InvalidHeader("We never saw the required CHROM header line (starting with one #) for the input VCF file");
+                // throw new TribbleException.InvalidHeader("We never saw the required CHROM header line (starting with one #) for the input VCF file");
             }
 
         }
-        throw new TribbleException.InvalidHeader("We never saw the required CHROM header line (starting with one #) for the input VCF file");
+        // throw new TribbleException.InvalidHeader("We never saw the required CHROM header line (starting with one #) for the input VCF file");
     }
 
     /**
