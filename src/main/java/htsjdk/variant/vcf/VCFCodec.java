@@ -112,6 +112,8 @@ public class VCFCodec extends AbstractVCFCodec {
             }
             else if (line.startsWith(VCFHeader.HEADER_INDICATOR)) {
                 if (!foundHeaderVersion) {
+                    System.err.println("Header line specifying VCF version not found. Setting version to: VCFv4.1" );
+                    version = VCFHeaderVersion.toHeaderVersion(defaultVersion);
                     // throw new TribbleException.InvalidHeader("We never saw a header line specifying VCF version");
                 }
                 headerStrings.add(lineIterator.next());
