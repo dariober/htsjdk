@@ -84,6 +84,8 @@ public class VCFCodec extends AbstractVCFCodec {
     public Object readActualHeader(final LineIterator lineIterator) {
         final List<String> headerStrings = new ArrayList<String>();
 
+        String defaultVersion= "VCFv4.1";
+
         String line;
         boolean foundHeaderVersion = false;
         while (lineIterator.hasNext()) {
@@ -93,7 +95,9 @@ public class VCFCodec extends AbstractVCFCodec {
                 final String[] lineFields = line.substring(2).split("=");
                 if (lineFields.length == 2 && VCFHeaderVersion.isFormatString(lineFields[0]) ) {
                     if ( !VCFHeaderVersion.isVersionString(lineFields[1]) ){
-                        // throw new TribbleException.InvalidHeader(lineFields[1] + " is not a supported version");
+                     	System.err.println("VCF version " + lineFields[1] + " is not supported. Resetting to: " + defaultVersion);
+                     	lineFields[1]= defaultVersion;
+                     	// throw new TribbleException.InvalidHeader(lineFields[1] + " is not a supported version");
                     }
                     foundHeaderVersion = true;
                     version = VCFHeaderVersion.toHeaderVersion(lineFields[1]);
