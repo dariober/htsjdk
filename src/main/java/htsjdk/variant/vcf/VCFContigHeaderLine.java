@@ -76,7 +76,7 @@ public class VCFContigHeaderLine extends VCFSimpleHeaderLine {
     }
 
 	public SAMSequenceRecord getSAMSequenceRecord() {
-		final String lengthString = this.getGenericFieldValue("length");
+		String lengthString = this.getGenericFieldValue("length");
 		if (lengthString == null) {
             lengthString= Integer.toString(Integer.MAX_VALUE);
             // throw new TribbleException("Contig " + this.getID() + " does not have a length field.");
