@@ -92,14 +92,17 @@ public class VCFCodec extends AbstractVCFCodec {
             if (line.startsWith(VCFHeader.METADATA_INDICATOR)) {
                 final String[] lineFields = line.substring(2).split("=");
                 if (lineFields.length == 2 && VCFHeaderVersion.isFormatString(lineFields[0]) ) {
-                    if ( !VCFHeaderVersion.isVersionString(lineFields[1]) )
+                    if ( !VCFHeaderVersion.isVersionString(lineFields[1]) ){
                         // throw new TribbleException.InvalidHeader(lineFields[1] + " is not a supported version");
+                    }
                     foundHeaderVersion = true;
                     version = VCFHeaderVersion.toHeaderVersion(lineFields[1]);
-                    if ( ! version.isAtLeastAsRecentAs(VCFHeaderVersion.VCF4_0) )
+                    if ( ! version.isAtLeastAsRecentAs(VCFHeaderVersion.VCF4_0) ){
                         throw new TribbleException.InvalidHeader("This codec is strictly for VCFv4; please use the VCF3 codec for " + lineFields[1]);
-                    if ( version != VCFHeaderVersion.VCF4_0 && version != VCFHeaderVersion.VCF4_1 && version != VCFHeaderVersion.VCF4_2 )
+                    }
+                    if ( version != VCFHeaderVersion.VCF4_0 && version != VCFHeaderVersion.VCF4_1 && version != VCFHeaderVersion.VCF4_2 ){
                         throw new TribbleException.InvalidHeader("This codec is strictly for VCFv4 and does not support " + lineFields[1]);
+                    }
                 }
                 headerStrings.add(lineIterator.next());
             }
@@ -112,11 +115,11 @@ public class VCFCodec extends AbstractVCFCodec {
                 return this.header;
             }
             else {
-                // throw new TribbleException.InvalidHeader("We never saw the required CHROM header line (starting with one #) for the input VCF file");
+                throw new TribbleException.InvalidHeader("We never saw the required CHROM header line (starting with one #) for the input VCF file");
             }
 
         }
-        // throw new TribbleException.InvalidHeader("We never saw the required CHROM header line (starting with one #) for the input VCF file");
+        throw new TribbleException.InvalidHeader("We never saw the required CHROM header line (starting with one #) for the input VCF file");
     }
 
     /**
