@@ -115,7 +115,7 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      */
     public VCFFileReader(final Path path, final boolean requireIndex) {
         this.reader = AbstractFeatureReader.getFeatureReader(
-                path.toUri().toString(),
+                path.toUri().getPath(),
                 getCodecForPath(path),
                 requireIndex);
     }
@@ -125,8 +125,8 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      */
     public VCFFileReader(final Path path, final Path indexPath, final boolean requireIndex) {
         this.reader = AbstractFeatureReader.getFeatureReader(
-                path.toUri().toString(),
-                indexPath.toUri().toString(),
+                path.toUri().getPath(),
+                indexPath.toUri().getPath(),
                 getCodecForPath(path),
                 requireIndex);
     }
