@@ -107,8 +107,13 @@ public abstract class SeekableStream extends InputStream {
             return 0;
         }
         final long remaining = length() - position();
-        // the remaining might be negative if the length is not available (0)
-        return (remaining < 0) ? 0 : (int) remaining;
+        if (remaining < 0) { // remaining might be negative if the length is not available (0)
+            return 0;
+        } else if (remaining > Integer.MAX_VALUE) { // remaining might be bigger than Integer.MAX_VALUE for very large files
+            return Integer.MAX_VALUE;
+        } else {
+            return (int) remaining;
+        }
     }
 
     /**
@@ -120,8 +125,7 @@ public abstract class SeekableStream extends InputStream {
      * @throws RuntimeIOException if an IO error occurs other than an already closed stream.
      */
     @Override
-    //public final synchronized void mark(int readlimit) {
-    public synchronized void mark(int readlimit) {
+    public final synchronized void mark(int readlimit) {
         try {
             mark = OptionalLong.of(position());
         } catch (final ClosedChannelException e) {
@@ -146,7 +150,7 @@ public abstract class SeekableStream extends InputStream {
 
     /** Mark is always supported by any {@link SeekableStream}. */
     @Override
-    public boolean markSupported() {
+    public final boolean markSupported() {
         return true;
     }
 

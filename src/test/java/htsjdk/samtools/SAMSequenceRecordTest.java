@@ -24,6 +24,7 @@
 package htsjdk.samtools;
 
 import htsjdk.HtsjdkTest;
+import htsjdk.samtools.util.Interval;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -44,6 +45,17 @@ public class SAMSequenceRecordTest extends HtsjdkTest {
         Assert.assertEquals("@SQ\tSN:chr5_but_without_a_prefix\tLN:271828\tSP:Psephophorus terrypratchetti\tAS:GRCt01\tM5:7a6dd3d307de916b477e7bf304ac22bc", r.getSAMString());
     }
 
+    @Test
+    public void testLocatable() {
+        final SAMSequenceRecord r = new SAMSequenceRecord("1", 100);
+        Assert.assertTrue(r.overlaps(r));
+        Assert.assertEquals(r.getStart(),1);
+        Assert.assertEquals(r.getEnd(),r.getSequenceLength());
+        Assert.assertEquals(r.getLengthOnReference(),r.getSequenceLength());
+        Assert.assertTrue(r.overlaps(new Interval(r.getContig(), 50, 150)));
+        Assert.assertFalse(r.overlaps(new Interval(r.getContig(), 101, 101)));
+    }
+    
     @DataProvider
     public Object[][] testIsSameSequenceData() {
         final SAMSequenceRecord rec1 = new SAMSequenceRecord("chr1", 100);
@@ -82,5 +94,35 @@ public class SAMSequenceRecordTest extends HtsjdkTest {
             rec1.setSequenceIndex(index1);
             Assert.assertEquals(rec1.isSameSequence(rec2), isSame);
         }
+    }
+
+    @Test
+    public void testSetAndCheckDescription() {
+        final SAMSequenceRecord record = new SAMSequenceRecord("Test", 1000);
+        Assert.assertNull(record.getDescription());
+        final String description = "A description.";
+        record.setDescription(description);
+        Assert.assertEquals(record.getDescription(), description);
+    }
+
+    @DataProvider
+    public Object[][] illegalSequenceNames(){
+        return new Object[][]{
+                {"space "},
+                {"comma,"},
+                {"lbrace["},
+                {"rbrace]"},
+                {"slash\\"},
+                {"smaller<"},
+                {"bigger<"},
+                {"lparen("},
+                {"rparen)"},
+                {"lbracket{"},
+                {"rbracket}"}};
+    }
+
+    @Test(dataProvider = "illegalSequenceNames", expectedExceptions = SAMException.class)
+    public void testIllegalSequenceNames(final String sequenceName){
+        new SAMSequenceRecord(sequenceName,100);
     }
 }

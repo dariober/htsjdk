@@ -25,11 +25,14 @@ package htsjdk.samtools.util;
 
 import htsjdk.samtools.SAMRecordSetBuilder;
 import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
@@ -74,7 +77,7 @@ public class EdgeReadIteratorTest extends AbstractLocusIteratorTestTemplate {
             // add a negative-strand fragment mapped on chrM with base quality of 10
             builder.addFrag("record" + i, 0, startPosition, true, false, "36M", null, 10);
         }
-        final int coveredEnd = CoordMath.getEnd(startPosition, readLength) +1;
+        final int coveredEnd = CoordMath.getEnd(startPosition, readLength) + 1;
         final EdgeReadIterator sli = new EdgeReadIterator(builder.getSamReader());
 
         int pos = 1;
@@ -97,7 +100,8 @@ public class EdgeReadIteratorTest extends AbstractLocusIteratorTestTemplate {
      */
     @Override
     @Test
-    public void testSimpleGappedAlignment() {final SAMRecordSetBuilder builder = getRecordBuilder();
+    public void testSimpleGappedAlignment() {
+        final SAMRecordSetBuilder builder = getRecordBuilder();
         // add records up to coverage for the test in that position
         final int startPosition = 165;
         for (int i = 0; i < coverage; i++) {
@@ -310,7 +314,7 @@ public class EdgeReadIteratorTest extends AbstractLocusIteratorTestTemplate {
         EdgeReadIterator iterator = new EdgeReadIterator(builder.getSamReader(), intervals);
         int locusPosition = 40;
         while (iterator.hasNext()) {
-            AbstractLocusInfo<EdgingRecordAndOffset> next = iterator.next();
+            final AbstractLocusInfo<EdgingRecordAndOffset> next = iterator.next();
             int position = next.getPosition();
             assertEquals(locusPosition++, position);
             if (position == 40) {
@@ -332,6 +336,23 @@ public class EdgeReadIteratorTest extends AbstractLocusIteratorTestTemplate {
         assertEquals(81, locusPosition);
     }
 
+    @Test
+    public void testNoGapsInLocusAccumulator() {
+        final SamReader reader = SamReaderFactory.make().open(new File("src/test/resources/htsjdk/samtools/util/sliver.sam"));
+        final EdgeReadIterator iterator = new EdgeReadIterator(reader, null);
+
+        AbstractLocusInfo<EdgingRecordAndOffset> previous = null;
+        int counter = 0;
+        while (iterator.hasNext() && (previous == null || previous.getPosition() < 1_000_000)) {
+            counter++;
+            final AbstractLocusInfo<EdgingRecordAndOffset> next = iterator.next();
+            if (previous != null) {
+                Assert.assertEquals(next.getPosition(), previous.getPosition() + 1);
+            }
+            previous = next;
+        }
+        Assert.assertEquals(counter, 1_000_000);
+    }
 
     /**
      * Test for intersecting interval for read with a deletion in the middle
@@ -377,7 +398,6 @@ public class EdgeReadIteratorTest extends AbstractLocusIteratorTestTemplate {
         assertEquals(21, locusPosition);
     }
 
-
     private void fillEmptyLocus(int[] expectedReferencePositions, int[] expectedDepths, int[][] expectedReadOffsets, int i) {
         expectedReferencePositions[i] = i + 1;
         expectedDepths[i] = 0;
@@ -395,8 +415,11 @@ public class EdgeReadIteratorTest extends AbstractLocusIteratorTestTemplate {
         return builder.getSamReader();
     }
 
-
-    private IntervalList createIntervalList(String s) {
-        return IntervalList.fromReader(new BufferedReader(new InputStreamReader(new ByteArrayInputStream(s.getBytes()))));
+    private IntervalList createIntervalList(final String s) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(s.getBytes())))) {
+            return IntervalList.fromReader(br);
+        } catch (IOException e) {
+            throw new RuntimeException("Trouble closing reader: " + s, e);
+        }
     }
 }

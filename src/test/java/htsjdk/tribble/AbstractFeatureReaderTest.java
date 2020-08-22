@@ -4,6 +4,7 @@ import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.HtsjdkTest;
 import htsjdk.samtools.FileTruncatedException;
+import htsjdk.samtools.util.IOUtilTest;
 import htsjdk.samtools.util.TestUtil;
 import htsjdk.tribble.bed.BEDCodec;
 import htsjdk.tribble.bed.BEDFeature;
@@ -18,7 +19,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.*;
@@ -77,62 +77,23 @@ public class AbstractFeatureReaderTest extends HtsjdkTest {
         }
     }
 
-    @DataProvider(name = "blockCompressedExtensionExtensionStrings")
-    public Object[][] createBlockCompressedExtensionStrings() {
-        return new Object[][] {
-                { "testzip.gz", true },
-                { "test.gzip", true },
-                { "test.bgz", true },
-                { "test.bgzf", true },
-                { "test.bzip2", false }
-        };
-    }
-
-    @Test(dataProvider = "blockCompressedExtensionExtensionStrings")
+    @Test(dataProvider = "blockCompressedExtensionExtensionStrings", dataProviderClass = IOUtilTest.class)
     public void testBlockCompressionExtensionString(final String testString, final boolean expected) {
         Assert.assertEquals(AbstractFeatureReader.hasBlockCompressedExtension(testString), expected);
     }
 
-    @Test(dataProvider = "blockCompressedExtensionExtensionStrings")
+    @Test(dataProvider = "blockCompressedExtensionExtensionStrings", dataProviderClass = IOUtilTest.class)
     public void testBlockCompressionExtensionFile(final String testString, final boolean expected) {
         Assert.assertEquals(AbstractFeatureReader.hasBlockCompressedExtension(new File(testString)), expected);
     }
 
-    @DataProvider(name = "blockCompressedExtensionExtensionURIStrings")
-    public Object[][] createBlockCompressedExtensionURIs() {
-        return new Object[][]{
-                {"testzip.gz", true},
-                {"test.gzip", true},
-                {"test.bgz", true},
-                {"test.bgzf", true},
-                {"test", false},
-                {"test.bzip2", false},
-
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.gz", true},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.gzip", true},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.bgz", true},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.bgzf", true},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.bzip2", false},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877", false},
-
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.gz?alt=media", true},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.gzip?alt=media", true},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.bgz?alt=media", true},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.bgzf?alt=media", true},
-                {"https://www.googleapis.com/download/storage/v1/b/deflaux-public-test/o/NA12877.vcf.bzip2?alt=media", false},
-
-                {"ftp://ftp.broadinstitute.org/distribution/igv/TEST/cpgIslands.hg18.gz", true},
-                {"ftp://ftp.broadinstitute.org/distribution/igv/TEST/cpgIslands.hg18.bed", false}
-        };
-    }
-
-    @Test(dataProvider = "blockCompressedExtensionExtensionURIStrings")
+    @Test(dataProvider = "blockCompressedExtensionExtensionURIStrings", dataProviderClass = IOUtilTest.class)
     public void testBlockCompressionExtension(final String testURIString, final boolean expected) {
         URI testURI = URI.create(testURIString);
         Assert.assertEquals(AbstractFeatureReader.hasBlockCompressedExtension(testURI), expected);
     }
 
-    @Test(dataProvider = "blockCompressedExtensionExtensionURIStrings")
+    @Test(dataProvider = "blockCompressedExtensionExtensionURIStrings", dataProviderClass = IOUtilTest.class)
     public void testBlockCompressionExtensionStringVersion(final String testURIString, final boolean expected) {
         Assert.assertEquals(AbstractFeatureReader.hasBlockCompressedExtension(testURIString), expected);
     }
@@ -155,7 +116,7 @@ public class AbstractFeatureReaderTest extends HtsjdkTest {
     @Test(dataProvider = "vcfFileAndWrapperCombinations")
     public void testGetFeatureReaderWithPathAndWrappers(String file, String index,
                                                         Function<SeekableByteChannel, SeekableByteChannel> wrapper,
-                                                        Function<SeekableByteChannel, SeekableByteChannel> indexWrapper) throws IOException, URISyntaxException {
+                                                        Function<SeekableByteChannel, SeekableByteChannel> indexWrapper) throws IOException {
         try(FileSystem fs = Jimfs.newFileSystem("test", Configuration.unix());
             final AbstractFeatureReader<VariantContext, ?> featureReader = getFeatureReader(file, index, wrapper,
                                                                                             indexWrapper,
@@ -182,7 +143,7 @@ public class AbstractFeatureReaderTest extends HtsjdkTest {
     }
 
     @Test(dataProvider = "failsWithoutWrappers", expectedExceptions = {TribbleException.class, FileTruncatedException.class})
-    public void testFailureIfNoWrapper(String file, String index) throws IOException, URISyntaxException {
+    public void testFailureIfNoWrapper(String file, String index) throws IOException {
         try(final FileSystem fs = Jimfs.newFileSystem("test", Configuration.unix());
             final FeatureReader<?> reader = getFeatureReader(file, index, null, null, new VCFCodec(), fs)){
             // should have exploded by now
@@ -193,7 +154,7 @@ public class AbstractFeatureReaderTest extends HtsjdkTest {
                                                                                     Function<SeekableByteChannel, SeekableByteChannel> wrapper,
                                                                                     Function<SeekableByteChannel, SeekableByteChannel> indexWrapper,
                                                                                     FeatureCodec<T, ?> codec,
-                                                                                    FileSystem fileSystem) throws IOException, URISyntaxException {
+                                                                                    FileSystem fileSystem) throws IOException {
         final Path vcfInJimfs = TestUtils.getTribbleFileInJimfs(vcf, index, fileSystem);
         return AbstractFeatureReader.getFeatureReader(
                 vcfInJimfs.toUri().toString(),
@@ -262,6 +223,36 @@ public class AbstractFeatureReaderTest extends HtsjdkTest {
         @Override
         public SeekableByteChannel truncate(long size) throws IOException {
             return input.truncate(size + toSkip);
+        }
+    }
+
+    @DataProvider
+    public Object[][] getVcfRedirects(){
+        return new Object[][]{
+          {VCFRedirectCodec.REDIRECTING_CODEC_TEST_FILE_ROOT + "vcf.redirect"},
+          {VCFRedirectCodec.REDIRECTING_CODEC_TEST_FILE_ROOT + "vcf.gz.redirect"}
+        };
+    }
+
+    /**
+     * Test a codec that uses {@link FeatureCodec#getPathToDataFile(String)} in order to specify a data file that's
+     * different than the file it identifies with {@link FeatureCodec#canDecode}).
+     */
+    @Test(dataProvider = "getVcfRedirects")
+    public void testCodecWithGetPathToDataFile(String vcfRedirect) throws IOException {
+        final VCFRedirectCodec vcfRedirectCodec = new VCFRedirectCodec();
+        final String vcf = VCFRedirectCodec.REDIRECTING_CODEC_TEST_FILE_ROOT + "dataFiles/test.vcf";
+        Assert.assertTrue(vcfRedirectCodec.canDecode(vcfRedirect), "should have been able to decode " + vcfRedirect);
+        try(FeatureReader<VariantContext> redirectReader = AbstractFeatureReader.getFeatureReader(vcfRedirect, vcfRedirectCodec, false);
+            FeatureReader<VariantContext> directReader = AbstractFeatureReader.getFeatureReader(vcf, new VCFCodec(), false)){
+            Assert.assertEquals(redirectReader.getHeader().toString(), directReader.getHeader().toString());
+            final int redirectVcfSize = redirectReader.iterator().toList().size();
+            Assert.assertTrue( redirectVcfSize > 0, "iterator found " + redirectVcfSize + " records");
+            Assert.assertEquals(redirectVcfSize, directReader.iterator().toList().size());
+
+            final int redirectQuerySize = redirectReader.query("20", 1, 20000).toList().size();
+            Assert.assertTrue(redirectQuerySize > 0, "query found " + redirectVcfSize + " records");
+            Assert.assertEquals(redirectQuerySize, directReader.query("20", 1, 20000).toList().size() );
         }
     }
 

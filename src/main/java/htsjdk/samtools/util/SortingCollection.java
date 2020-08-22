@@ -29,7 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -506,7 +505,7 @@ public class SortingCollection<T> implements Iterable<T> {
         MergingIterator() {
             this.queue = new TreeSet<>(new PeekFileRecordIteratorComparator());
             int n = 0;
-            log.info(String.format("Creating merging iterator from %d files", files.size()));
+            log.debug(String.format("Creating merging iterator from %d files", files.size()));
             int suggestedBufferSize = checkMemoryAndAdjustBuffer(files.size());
             for (final Path f : files) {
                 final FileRecordIterator it = new FileRecordIterator(f, suggestedBufferSize);
@@ -525,11 +524,16 @@ public class SortingCollection<T> implements Iterable<T> {
         // enough memory for buffering it will return zero and all reading will be unbuffered.
         private int checkMemoryAndAdjustBuffer(int numFiles) {
             int bufferSize = Defaults.BUFFER_SIZE;
+
             // garbage collect so that our calculation is accurate.
-            Runtime.getRuntime().gc();
+            final Runtime rt = Runtime.getRuntime();
+            rt.gc();
+
+            //                             free in heap       space available to expand heap
+            final long allocatableMemory = rt.freeMemory() + (rt.maxMemory() - rt.totalMemory());
 
             // There is ~20k in overhead per file.
-            final long freeMemory = Runtime.getRuntime().freeMemory() - (numFiles * 20 * 1024);
+            final long freeMemory = allocatableMemory - (numFiles * 20 * 1024);
             // use the floor value from the divide
             final int memoryPerFile = (int) (freeMemory / numFiles);
 
@@ -645,9 +649,7 @@ public class SortingCollection<T> implements Iterable<T> {
         }
     }
 
-    class PeekFileRecordIteratorComparator implements Comparator<PeekFileRecordIterator>, Serializable {
-        private static final long serialVersionUID = 1L;
-
+    class PeekFileRecordIteratorComparator implements Comparator<PeekFileRecordIterator> {
         @Override
         public int compare(final PeekFileRecordIterator lhs, final PeekFileRecordIterator rhs) {
             final int result = comparator.compare(lhs.peek(), rhs.peek());

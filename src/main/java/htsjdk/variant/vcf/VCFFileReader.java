@@ -1,8 +1,34 @@
+/*
+ * The MIT License
+ *
+ * Copyright (c) 2013 The Broad Institute
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 package htsjdk.variant.vcf;
 
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.*;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.FileExtensions;
+import htsjdk.samtools.util.Interval;
+import htsjdk.samtools.util.IntervalList;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.FeatureReader;
@@ -10,15 +36,16 @@ import htsjdk.tribble.TribbleException;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Simplified interface for reading from VCF/BCF files.
  */
-public class VCFFileReader implements Closeable, Iterable<VariantContext> {
+public class VCFFileReader implements VCFReader {
 
     private final FeatureReader<VariantContext> reader;
 
@@ -33,7 +60,7 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      * Returns true if the given path appears to be a BCF file.
      */
     public static boolean isBCF(final Path path) {
-        return path.toUri().getRawPath().endsWith(IOUtil.BCF_FILE_EXTENSION);
+        return path.toUri().getRawPath().endsWith(FileExtensions.BCF);
     }
 
     /**
@@ -92,8 +119,9 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      * Returns the SAMSequenceDictionary from the provided VCF file.
      */
     public static SAMSequenceDictionary getSequenceDictionary(final Path path) {
-        final SAMSequenceDictionary dict = new VCFFileReader(path, false).getFileHeader().getSequenceDictionary();
-        return dict;
+        try (final VCFFileReader r = new VCFFileReader(path, false)) {
+            return r.getFileHeader().getSequenceDictionary();
+        }
     }
 
     /**
@@ -115,7 +143,7 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      */
     public VCFFileReader(final Path path, final boolean requireIndex) {
         this.reader = AbstractFeatureReader.getFeatureReader(
-                path.toUri().getPath(),
+                path.toUri().toString(),
                 getCodecForPath(path),
                 requireIndex);
     }
@@ -125,8 +153,8 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      */
     public VCFFileReader(final Path path, final Path indexPath, final boolean requireIndex) {
         this.reader = AbstractFeatureReader.getFeatureReader(
-                path.toUri().getPath(),
-                indexPath.toUri().getPath(),
+                path.toUri().toString(),
+                indexPath.toUri().toString(),
                 getCodecForPath(path),
                 requireIndex);
     }
@@ -135,7 +163,7 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      * Parse a VCF file and convert to an IntervalList The name field of the IntervalList is taken from the ID field of the variant, if it exists. if not,
      * creates a name of the format interval-n where n is a running number that increments only on un-named intervals
      *
-     * @param path
+     * @param path a VCF
      * @return
      */
     public static IntervalList toIntervalList(final Path path) {
@@ -152,9 +180,12 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      * Parse a VCF file and convert to an IntervalList The name field of the IntervalList is taken from the ID field of the variant, if it exists. if not,
      * creates a name of the format interval-n where n is a running number that increments only on un-named intervals
      *
-     * @param file
-     * @return
+     * @param file a VCF
+     * @return an {@link IntervalList}
+     *
+     * @deprecated since July 2018 use {@link #toIntervalList(Path)} instead
      */
+    @Deprecated
     public static IntervalList fromVcf(final File file) {
         return toIntervalList(file.toPath());
     }
@@ -165,15 +196,18 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      *
      * @param file
      * @return
+     * @deprecated since July 2018 use {@link #toIntervalList(Path, boolean)} instead
      */
+    @Deprecated
     public static IntervalList fromVcf(final File file, final boolean includeFiltered) {
         return toIntervalList(file.toPath(), includeFiltered);
     }
 
     /**
-     * Converts a vcf to an IntervalList. The name field of the IntervalList is taken from the ID field of the variant, if it exists. If not,
-     * creates a name of the format interval-n where n is a running number that increments only on un-named intervals
-     * Will use a "END" tag in the info field as the end of the interval (if exists).
+     * Converts the underlying VCFFileReader to an IntervalList. The name field of the IntervalList is taken from the
+     * ID field of the variant, if it exists. If not, creates a name of the format 'interval-n' where n is a running
+     * number that increments on un-named intervals. Will use the "END" tag in the INFO field as the end of the interval
+     * (if exists).
      *
      * @return an IntervalList constructed from input vcf
      */
@@ -182,74 +216,108 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
     }
 
     public IntervalList toIntervalList(final boolean includeFiltered) {
-
-        //grab the dictionary from the VCF and use it in the IntervalList
-        final SAMSequenceDictionary dict = getFileHeader().getSequenceDictionary();
-        final SAMFileHeader samFileHeader = new SAMFileHeader();
-        samFileHeader.setSequenceDictionary(dict);
-        final IntervalList list = new IntervalList(samFileHeader);
-
-        int intervals = 0;
-        for (final VariantContext vc : this) {
-            if (includeFiltered || !vc.isFiltered()) {
-                String name = vc.getID();
-                final Integer intervalEnd = vc.getCommonInfo().getAttributeAsInt("END", vc.getEnd());
-                if (".".equals(name) || name == null)
-                    name = "interval-" + (++intervals);
-                list.add(new Interval(vc.getContig(), vc.getStart(), intervalEnd, false, name));
-            }
-        }
-
-        return list;
+        return toIntervalList(this, includeFiltered);
     }
 
     /**
      * Converts a vcf to an IntervalList. The name field of the IntervalList is taken from the ID field of the variant, if it exists. If not,
-     * creates a name of the format interval-n where n is a running number that increments only on un-named intervals
-     * Will use a "END" tag in the info field as the end of the interval (if exists).
+     * creates a name of the format interval-n where n is a running number that increments only on un-named intervals.
+     * Will use a "END" tag in the INFO field as the end of the interval (if exists).
      *
      * @param vcf the vcfReader to be used for the conversion
      * @return an IntervalList constructed from input vcf
+     *
+     * @deprecated since July 2018 since use {@link #toIntervalList(VCFFileReader)} instead
      */
+    @Deprecated
     public static IntervalList fromVcf(final VCFFileReader vcf) {
         return fromVcf(vcf, false);
     }
 
     /**
      * Converts a vcf to an IntervalList. The name field of the IntervalList is taken from the ID field of the variant, if it exists. If not,
-     * creates a name of the format interval-n where n is a running number that increments only on un-named intervals
-     * Will use a "END" tag in the info field as the end of the interval (if exists).
+     * creates a name of the format interval-n where n is a running number that increments only on un-named intervals.
+     * Will use a "END" tag in the INFO field as the end of the interval (if exists).
      *
      * @param vcf the vcfReader to be used for the conversion
      * @return an IntervalList constructed from input vcf
      */
+    public static IntervalList toIntervalList(final VCFFileReader vcf) {
+        return toIntervalList(vcf, false);
+    }
+
+
+    /**
+     * Converts a vcf to an IntervalList. The name field of the IntervalList is taken from the ID field of the variant, if it exists. If not,
+     * creates a name of the format interval-n where n is a running number that increments only on un-named intervals.
+     * Will use a "END" tag in the INFO field as the end of the interval (if exists).
+     *
+     * @param vcf the vcfReader to be used for the conversion
+     * @return an IntervalList constructed from input vcf
+     *
+     * @deprecated since July 2018 since use {@link #toIntervalList(VCFFileReader, boolean)} instead
+     */
+    @Deprecated
     public static IntervalList fromVcf(final VCFFileReader vcf, final boolean includeFiltered) {
+        return toIntervalList(vcf, includeFiltered);
+    }
 
-        //grab the dictionary from the VCF and use it in the IntervalList
-        final SAMSequenceDictionary dict = vcf.getFileHeader().getSequenceDictionary();
-        final SAMFileHeader samFileHeader = new SAMFileHeader();
-        samFileHeader.setSequenceDictionary(dict);
-        final IntervalList list = new IntervalList(samFileHeader);
+    /**
+     * Converts a {@link VCFFileReader} to an IntervalList. The name field of the Interval is taken from the ID field
+     * of the variant, if it exists. If not, creates a name of the format interval-n where n is a running number that increments
+     * only on un-named intervals. Will use a "END" tag in the INFO field as the end of the interval (if exists).
+     *
+     * @param vcf the vcfReader to be used for the conversion
+     * @return an IntervalList constructed from input vcf
+     */
+    public static IntervalList toIntervalList(final VCFFileReader vcf, final boolean includeFiltered) {
+        final IntervalList intervalList = new IntervalList(vcf.getFileHeader().getSequenceDictionary());
+        toIntervals(vcf, includeFiltered).forEachRemaining(intervalList::add);
+        return intervalList;
+    }
 
-        int intervals = 0;
-        for (final VariantContext vc : vcf) {
-            if (includeFiltered || !vc.isFiltered()) {
-                String name = vc.getID();
-                final Integer intervalEnd = vc.getCommonInfo().getAttributeAsInt("END", vc.getEnd());
-                if (".".equals(name) || name == null)
-                    name = "interval-" + (++intervals);
-                list.add(new Interval(vc.getContig(), vc.getStart(), intervalEnd, false, name));
-            }
-        }
+    /**
+     * Converts a {@link VCFFileReader} to an {@link Iterator<Interval>}
+     * The name field of the Interval is taken from the ID field
+     * of the variant, if it exists. If not, creates a name of the format interval-n where n is a running number that increments
+     * only on un-named intervals. Will use a "END" tag in the INFO field as the end of the interval (if exists).
+     *
+     *
+     * @param vcf the vcfReader to be used for the conversion
+     * @return a Iterator<Interval> constructed from input vcf
+     */
+    public static Iterator<Interval> toIntervals(final VCFFileReader vcf, final boolean includeFiltered) {
 
-        return list;
+        //intervalCount is used and incremented inside the lambda function, so it needs to be a final mutable object.
+        final AtomicInteger intervalCount = new AtomicInteger(0);
+
+        return vcf.iterator()
+                .stream()
+                .filter(vc -> includeFiltered || !vc.isFiltered())
+                .map(vc -> {
+                    String name = vc.getID();
+                    final int intervalEnd = vc.getCommonInfo().getAttributeAsInt(VCFConstants.END_KEY, vc.getEnd());
+                    if (VCFConstants.EMPTY_ID_FIELD.equals(name) || name == null) {
+                        name = "interval-" + intervalCount.incrementAndGet();;
+                    }
+                    return new Interval(vc.getContig(), vc.getStart(), intervalEnd, false, name);
+
+                }).iterator();
     }
 
     /**
      * Returns the VCFHeader associated with this VCF/BCF file.
      */
-    public VCFHeader getFileHeader() {
+    @Override
+    public VCFHeader getHeader() {
         return (VCFHeader) reader.getHeader();
+    }
+ 
+    /**
+     * Synonym of {@link #getHeader()}
+     */
+    public final VCFHeader getFileHeader() {
+        return getHeader();
     }
 
     /**
@@ -296,6 +364,7 @@ public class VCFFileReader implements Closeable, Iterable<VariantContext> {
      *
      * @return true if the reader can be queried, i.e. if the underlying Tribble reader is queryable.
      */
+    @Override
     public boolean isQueryable() {
         return reader.isQueryable();
     }
