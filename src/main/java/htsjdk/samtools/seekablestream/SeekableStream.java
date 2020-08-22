@@ -125,7 +125,7 @@ public abstract class SeekableStream extends InputStream {
      * @throws RuntimeIOException if an IO error occurs other than an already closed stream.
      */
     @Override
-    public final synchronized void mark(int readlimit) {
+    public synchronized void mark(int readlimit) {
         try {
             mark = OptionalLong.of(position());
         } catch (final ClosedChannelException e) {
@@ -150,7 +150,7 @@ public abstract class SeekableStream extends InputStream {
 
     /** Mark is always supported by any {@link SeekableStream}. */
     @Override
-    public final boolean markSupported() {
+    public boolean markSupported() {
         return true;
     }
 

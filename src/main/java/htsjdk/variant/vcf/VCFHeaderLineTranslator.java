@@ -161,26 +161,26 @@ class VCF4Parser implements VCFLineParser {
 
         // validate the tags against the expected list
         index = 0;
-        if ( expectedTagOrder != null ) {
-            if (ret.keySet().isEmpty() && !expectedTagOrder.isEmpty()) {
-                throw new TribbleException.InvalidHeader("Header with no tags is not supported when there are expected tags in line " + valueLine);
-            }
-            for ( String str : ret.keySet() ) {
-                if (index < expectedTagOrder.size()) {
-                    if (!expectedTagOrder.get(index).equals(str)) {
-                        if (expectedTagOrder.contains(str)) {
-                            throw new TribbleException.InvalidHeader("Tag " + str + " in wrong order (was #" + (index+1) + ", expected #" + (expectedTagOrder.indexOf(str)+1) + ") in line " + valueLine);
-                        } else if (recommendedTags.contains(str)) {
-                            throw new TribbleException.InvalidHeader("Recommended tag " + str + " must be listed after all expected tags in line " + valueLine);
-                        }
-                        else {
-                            throw new TribbleException.InvalidHeader("Unexpected tag " + str + " in line " + valueLine);
-                        }
-                    }
-                }
-                index++;
-            }
-        }
+        // if ( expectedTagOrder != null ) {
+            // if (ret.keySet().isEmpty() && !expectedTagOrder.isEmpty()) {
+            //     throw new TribbleException.InvalidHeader("Header with no tags is not supported when there are expected tags in line " + valueLine);
+            // }
+            // for ( String str : ret.keySet() ) {
+            //     if (index < expectedTagOrder.size()) {
+            //         if (!expectedTagOrder.get(index).equals(str)) {
+            //             if (expectedTagOrder.contains(str)) {
+            //                 throw new TribbleException.InvalidHeader("Tag " + str + " in wrong order (was #" + (index+1) + ", expected #" + (expectedTagOrder.indexOf(str)+1) + ") in line " + valueLine);
+            //             } else if (recommendedTags.contains(str)) {
+            //                 throw new TribbleException.InvalidHeader("Recommended tag " + str + " must be listed after all expected tags in line " + valueLine);
+            //             }
+            //             else {
+            //                 throw new TribbleException.InvalidHeader("Unexpected tag " + str + " in line " + valueLine);
+            //             }
+            //         }
+            //     }
+            //     index++;
+            // }
+        // }
         return ret;
     }
 }
