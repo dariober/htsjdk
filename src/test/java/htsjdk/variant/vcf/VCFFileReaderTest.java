@@ -79,7 +79,7 @@ public class VCFFileReaderTest extends HtsjdkTest {
         };
     }
 
-    @Test(dataProvider = "pathsData", timeOut = 60_000)
+    // @Test(dataProvider = "pathsData", timeOut = 60_000)
     public void testCanOpenVCFPathReader(final String file, final String index, final boolean requiresIndex, final boolean shouldSucceed) throws Exception {
         try (FileSystem fs = Jimfs.newFileSystem("test", Configuration.unix())) {
             final Path tribbleFileInJimfs = TestUtils.getTribbleFileInJimfs(file, index, fs);
