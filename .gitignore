@@ -17,4 +17,4 @@ out/
 
 #gradle stuff
 .gradle/
-build/
+build/*
