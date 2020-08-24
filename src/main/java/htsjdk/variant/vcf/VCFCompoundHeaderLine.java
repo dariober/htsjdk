@@ -205,6 +205,10 @@ public abstract class VCFCompoundHeaderLine extends VCFHeaderLine implements VCF
     protected VCFCompoundHeaderLine(String line, VCFHeaderVersion version, SupportedHeaderLineType lineType) {
         super(lineType.toString(), "");
 
+    	if(version == null) {
+    		version = VCFHeaderVersion.VCF4_2; // DB: Arbitrary decision if no version header
+    	}
+        
         final ArrayList<String> expectedTags = new ArrayList(Arrays.asList("ID", "Number", "Type", "Description"));
         final List<String> recommendedTags;
         if (version.isAtLeastAsRecentAs(VCFHeaderVersion.VCF4_2)) {
