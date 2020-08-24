@@ -51,10 +51,16 @@ public class VCFHeaderLineTranslator {
     }
 
     public static Map<String,String> parseLine(VCFHeaderVersion version, String valueLine, List<String> expectedTagOrder) {
+        if(version == null) {
+            version = VCFHeaderVersion.VCF4_2;
+        }
         return parseLine(version, valueLine, expectedTagOrder, Collections.emptyList());
     }
     
     public static Map<String,String> parseLine(VCFHeaderVersion version, String valueLine, List<String> expectedTagOrder, List<String> recommendedTags) {
+        if(version == null) {
+            version = VCFHeaderVersion.VCF4_2;
+        }
         return mapping.get(version).parseLine(valueLine, expectedTagOrder, recommendedTags);
     }
 }
