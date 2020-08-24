@@ -889,7 +889,7 @@ public class SAMRecord implements Cloneable, Locatable, Serializable {
 
     private void requireReadPaired() {
         if (!getReadPairedFlag()) {
-            throw new IllegalStateException("Inappropriate call if not paired read");
+            // throw new IllegalStateException("Inappropriate call if not paired read");
         }
     }
 
