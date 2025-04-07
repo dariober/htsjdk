@@ -44,6 +44,9 @@ public final class FileExtensions {
         ".fa.gz",
         ".fna",
         ".fna.gz",
+        ".gff",
+        ".gff3",
+        ".gtf",
         ".txt",
         ".txt.gz"
     )));
